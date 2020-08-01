@@ -1,9 +1,10 @@
-//import 'dart:async';
-//import 'dart:convert';
+import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
-//import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http;
 import 'package:draba/homepage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Size displaySize(BuildContext context) {
   debugPrint('Size = ' + MediaQuery.of(context).size.toString());
@@ -100,7 +101,11 @@ class LogInScreen extends StatefulWidget {
 
 class _LogInScreenState extends State<LogInScreen> {
   bool _obscureText = true;
-  
+  // ignore: unused_field
+  bool _isLoading = false;
+  //bool _isLoading = false;
+  TextEditingController emailController = new TextEditingController();
+  TextEditingController passwordController = new TextEditingController(); 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -153,6 +158,7 @@ class _LogInScreenState extends State<LogInScreen> {
                                 SizedBox(width: 5,),
                                 Expanded(
                                   child: TextFormField(
+                                    controller: emailController,
                                     decoration: InputDecoration(hintText: "Email",hintStyle: TextStyle(color: Colors.white),),
                                       keyboardType: TextInputType.emailAddress,
                                     ),
@@ -179,6 +185,7 @@ class _LogInScreenState extends State<LogInScreen> {
                                 SizedBox(width: 5,),
                                 Expanded(
                                   child: TextFormField(
+                                    controller: passwordController,
                                     decoration: InputDecoration(hintText: "Password",hintStyle: TextStyle(color: Colors.white),),
                                       keyboardType: TextInputType.text,
                                       obscureText: _obscureText,
@@ -218,9 +225,13 @@ class _LogInScreenState extends State<LogInScreen> {
                             ),
                             child: MaterialButton(
                               onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context){
+                                setState(() {
+                                  _isLoading = true;
+                                });
+                                signIn(emailController.text, passwordController.text);
+                                /*Navigator.push(context, MaterialPageRoute(builder: (context){
                               return Home();
-                            }));
+                            }));*/
                               },
                               child: Row(
                                 children: <Widget>[
@@ -310,5 +321,27 @@ class _LogInScreenState extends State<LogInScreen> {
         )
       ),
     );
+  }
+  signIn(String email, String password) async {
+    Map data = {
+      'email': email,
+      'password': password
+    };
+    var jsonData;
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var response = await http.post('http://167.172.149.230/api/login',body: data);
+    print(data);
+    jsonData = json.decode(response.body);
+    if (response.statusCode == 200) {
+      jsonData = json.decode(response.body);
+      setState(() {
+        _isLoading = false;
+        sharedPreferences.setString("token", jsonData["token"]);
+        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (BuildContext context) => Home()), (Route<dynamic> route) => false);
+      });
+    }
+    else {
+      print(response.body);
+    }
   }
 }
